@@ -4,11 +4,12 @@
 #include <math.h>
 #include <time.h>
 
-#define MATRIX_SIZE 3;
+#define MATRIX_SIZE 5;
 
 #define RED   "\x1B[31m"
 #define GRN   "\x1B[32m"
 #define BLU   "\x1b[36m"
+#define YEL   "\x1b[33m"
 #define RESET "\x1B[0m"
 
 int ProcNum; // Number of the available processes
@@ -254,10 +255,10 @@ void PrintMatrixAndVector(double *pMatrix, double *pVector, int Size, int RowNum
   }
 }
 
-// Print result vector
+// Print result vector using pivot pos
 void PrintResult(double *pResult, int Size) {
-  printf(BLU "---------------- Result ---------------------------\n" RESET);
-  for (int i = 0; i < Size; i++) printf("%f\t ", pResult[i]);
+  printf(YEL "---------------- Result ---------------------------\n" RESET);
+  for (int i = 0; i < Size; i++) printf("%f\t ", pResult[pParallelPivotPos[i]]);
   printf("\n");
 }
 
@@ -271,7 +272,7 @@ void PrintDistribution (double* pMatrix, double* pVector, double* pProcRows, dou
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  for (int i=0; i < ProcNum; i++) {
+  for (int i = 0; i < ProcNum; i++) {
     if (ProcRank == i) {
       printf(BLU "---------------- Rows from process %d --------------\n" RESET, ProcRank);
       PrintMatrixAndVector(pProcRows, pProcVector, Size, RowNum);
@@ -325,6 +326,7 @@ int main(int argc, char* argv[]) {
 
   DataDistribution(pMatrix, pProcRows, pVector, pProcVector, Size, RowNum);
 
+  // This is used for vizualization only, uses barriers so it will slow down the program
   PrintDistribution(pMatrix, pVector, pProcRows, pProcVector, Size, RowNum);
 
   ParallelResultCalculation(pProcRows, pProcVector, pProcResult, Size, RowNum);
