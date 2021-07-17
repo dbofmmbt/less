@@ -8,8 +8,10 @@ To check for syntax errors, you may use:
 
 `make check`
 
-To generate a release build, just use:
+To generate a release build (placed at `build/release/main`), just use:
 
 `make release`
 
-A binary will be placed at `build/release/main`.
+To generate a release build and run, use:
+
+`make run p={PROCESS_NUMBERS}`
