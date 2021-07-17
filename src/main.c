@@ -4,7 +4,12 @@
 #include <math.h>
 #include <time.h>
 
-#define MATRIX_SIZE 5;
+#define MATRIX_SIZE 3;
+
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define BLU   "\x1b[36m"
+#define RESET "\x1B[0m"
 
 int ProcNum; // Number of the available processes
 int ProcRank; // Rank of the current process
@@ -13,14 +18,6 @@ int *pParallelPivotPos; // Number of rows selected as the pivot ones
 int *pProcPivotIter; // Number of iterations, at which the processor rows were used as the pivot ones
 int *pProcInd; // Number of the first row located on the processes
 int *pProcNum; // Number of the linear system rows located on the processes
-
-// Print all matrix elements and respective vector
-void PrintMatrixAndVector(double *pMatrix, double *pVector, int Size) {
-  for (int row = 0; row < Size; row++) {
-    for(int column=0; column < Size; column++) printf("%.0f\t", pMatrix[row * Size + column]);
-    printf("-> %.0f\n", pVector[row]);
-  }
-}
 
 // Random definition of matrix and vector elements
 void PopulateMatrixAndVector (double *pMatrix, double *pVector, int Size) {
@@ -137,7 +134,7 @@ void ParallelEliminateColumns(double *pProcRows, double *pProcVector, double *pP
     if (pProcPivotIter[i] == -1) {
       multiplier = pProcRows[i * Size+Iter] / pPivotRow[Iter];
 
-      for (int j = Iter; j < Size; j++) pProcRows[i*Size + j] -= pPivotRow[j] * multiplier;
+      for (int j = Iter; j < Size; j++) pProcRows[i * Size + j] -= pPivotRow[j] * multiplier;
 
       pProcVector[i] -= pPivotRow[Size] * multiplier;
     }
@@ -147,17 +144,18 @@ void ParallelEliminateColumns(double *pProcRows, double *pProcVector, double *pP
 // Function for the Gausian elimination
 void ParallelGaussianElimination (double *pProcRows, double *pProcVector, int Size, int RowNum) {
   int PivotPos;  // Position of the pivot row in the process stripe 
+  double MaxValue;
 
   // Structure for the pivot row selection
   struct { double MaxValue; int ProcRank; } ProcPivot, Pivot;
 
   // pPivotRow is used for storing the pivot row and the corresponding element of the vector b
-  double *pPivotRow = malloc(sizeof(double) * (Size + 1));
+  double *pPivotRow = malloc(sizeof(double) * Size + 1);
 
   // The iterations of the Gaussian elimination stage
   for (int i = 0; i < Size; i++) {
     // Calculating the local pivot row
-    double MaxValue = 0;
+    MaxValue = 0;
 
     for (int j=0; j<RowNum; j++) {
       if ((pProcPivotIter[j] == -1) && (MaxValue < fabs(pProcRows[j * Size+i]))) {
@@ -178,7 +176,7 @@ void ParallelGaussianElimination (double *pProcRows, double *pProcVector, int Si
 
       // Fill the pivot row
       for (int j=0; j < Size; j++) {
-        pPivotRow[j] = pProcRows[PivotPos * (Size + j)];
+        pPivotRow[j] = pProcRows[PivotPos * Size + j];
       }
 
       pPivotRow[Size] = pProcVector[PivotPos];
@@ -218,7 +216,7 @@ void ParallelBackSubstitution (double *pProcRows, double *pProcVector, double *p
     
     // Calculating the unknown
     if (ProcRank == IterProcRank) {
-      IterResult = pProcVector[IterPivotPos] / pProcRows[IterPivotPos * (Size + i)];
+      IterResult = pProcVector[IterPivotPos] / pProcRows[IterPivotPos * Size + i];
       pProcResult[IterPivotPos] = IterResult;
     }
 
@@ -228,7 +226,7 @@ void ParallelBackSubstitution (double *pProcRows, double *pProcVector, double *p
     // Updating the values of the vector b
     for (int j=0; j < RowNum; j++) {
       if (pProcPivotIter[j] < i) {
-        val = pProcRows[j * (Size + i)] * IterResult;
+        val = pProcRows[j * Size + i] * IterResult;
         pProcVector[j] = pProcVector[j] - val;
       }
     }
@@ -243,76 +241,66 @@ void ParallelResultCalculation(double *pProcRows, double *pProcVector, double *p
 }
 
 // Function for gathering the result vector
-void ResultCollection(double *pProcResult, double *pResult) {
+void ResultCollection(double *pProcResult, double *pResult, int RowNum) {
   //Gather the whole result vector on every processor
   MPI_Gatherv(pProcResult, pProcNum[ProcRank], MPI_DOUBLE, pResult, pProcNum, pProcInd, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
-// Function for testing the result
-void TestResult(double* pMatrix, double* pVector, double* pResult, int Size) {
-  // Buffer for storing the vector, that is a result of multiplication of the linear system matrix by the vector of unknowns
-  double* pRightPartVector; 
-
-  // Flag, that shows wheather the right parts vectors are identical or not
-  int equal = 0;
-
-  double Accuracy = 1.e-6; // Comparison accuracy
-
-  pRightPartVector = malloc(sizeof(double) * (Size));
-
-  for (int i = 0; i < Size; i++) {
-    pRightPartVector[i] = 0;
-
-    for (int j = 0; j < Size; j++) {
-      pRightPartVector[i] += pMatrix[i * (Size + j)] * pResult[pParallelPivotPos[j]];
-    }
-  }
-
-  for (int i=0; i < Size; i++) {
-    if (fabs(pRightPartVector[i] - pVector[i]) > Accuracy) equal = 1;
-  }
-
-  if (equal == 1) 
-    printf("The result of the parallel Gauss algorithm is NOT correct. Check your code.");
-  else
-    printf("The result of the parallel Gauss algorithm is correct.");
-
-  free(pRightPartVector);
-}
-
-// Function for formatted matrix output
-void PrintMatrix (double* pMatrix, int RowCount, int ColCount) {
-  int i, j; // Loop variables
-  for (i=0; i<RowCount; i++) {
-    for (j=0; j<ColCount; j++) printf("%.0f, ", pMatrix[i*ColCount+j]);
-	  printf("\n");
+// Print all matrix elements and respective vector
+void PrintMatrixAndVector(double *pMatrix, double *pVector, int Size, int RowNum) {
+  for (int row = 0; row < RowNum; row++) {
+    for(int column=0; column < Size; column++) printf("%.0f\t", pMatrix[row * Size + column]);
+    printf("-> %.0f\n", pVector[row]);
   }
 }
 
-// Function for formatted vector output
-void PrintVector (double* pVector, int Size) {
-  int i;
-  for (i=0; i<Size; i++) printf("%.0f, ", pVector[i]);
+// Print result vector
+void PrintResult(double *pResult, int Size) {
+  printf(BLU "---------------- Result ---------------------------\n" RESET);
+  for (int i = 0; i < Size; i++) printf("%f\t ", pResult[i]);
   printf("\n");
 }
 
+
+// Print initial matrix and every process ones
 void PrintDistribution (double* pMatrix, double* pVector, double* pProcRows, double* pProcVector, int Size, int RowNum) {
   if (ProcRank == 0) {
-    printf("-------------------- Initial matrix -------------------\n");
-    PrintMatrix(pMatrix, Size, Size);
-    printf("-------------------- Initial vector -------------------\n");
-    PrintVector(pVector, Size);
+    printf(BLU "---------------- Initial matrix -------------------\n" RESET);
+    PrintMatrixAndVector(pMatrix, pVector, Size, Size);
   }
+
   MPI_Barrier(MPI_COMM_WORLD);
-  for (int i=0; i<ProcNum; i++) {
+
+  for (int i=0; i < ProcNum; i++) {
     if (ProcRank == i) {
-      printf("-------- Rows from process %d ---------\n", ProcRank);
-      PrintMatrix(pProcRows, RowNum, Size);
-      printf("-------- Vector from process %d -------\n", ProcRank);
-      PrintVector(pProcVector, RowNum);
+      printf(BLU "---------------- Rows from process %d --------------\n" RESET, ProcRank);
+      PrintMatrixAndVector(pProcRows, pProcVector, Size, RowNum);
     }
     MPI_Barrier(MPI_COMM_WORLD);
   }
+}
+
+void ProcessTermination(
+  double *pMatrix,
+  double *pVector,
+  double *pResult,
+  double *pProcRows,
+  double *pProcVector,
+  double *pProcResult
+) {
+  if (ProcRank == 0) {
+    free(pMatrix);
+    free(pVector);
+    free(pResult);
+  }
+
+  free(pProcRows);
+  free(pProcVector);
+  free(pProcResult);
+  free(pParallelPivotPos);
+  free(pProcPivotIter);
+  free(pProcInd);
+  free(pProcNum);
 }
 
 int main(int argc, char* argv[]) {
@@ -333,19 +321,19 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank ( MPI_COMM_WORLD, &ProcRank);
   MPI_Comm_size ( MPI_COMM_WORLD, &ProcNum);
 
-  if (ProcRank == 0) printf("-- Parallel Gauss algorithm for solving linear systems --\n");
-
   ProcessInitialization(&pMatrix, &pVector, &pResult, &pProcRows, &pProcVector, &pProcResult, &Size, &RowNum);
 
   DataDistribution(pMatrix, pProcRows, pVector, pProcVector, Size, RowNum);
 
   PrintDistribution(pMatrix, pVector, pProcRows, pProcVector, Size, RowNum);
-  
+
   ParallelResultCalculation(pProcRows, pProcVector, pProcResult, Size, RowNum);
 
-  ResultCollection(pProcResult, pResult);
+  ResultCollection(pProcResult, pResult, RowNum);
 
-  if (ProcRank == 0) TestResult(pMatrix, pVector, pResult, Size);
+  if (ProcRank == 0) PrintResult(pResult, Size);
+
+  ProcessTermination(pMatrix, pVector, pResult, pProcRows, pProcVector, pProcResult);
 
   MPI_Finalize();
 
