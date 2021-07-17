@@ -1,4 +1,4 @@
-CC = gcc
+CC = mpicc
 SRC = src/main.c
 
 check:
@@ -9,4 +9,4 @@ release:
 	${CC} ${SRC} -Wall -o build/release/main
 
 run: release
-	./build/release/main
+	mpirun -n $(p) ./build/release/main
