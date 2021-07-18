@@ -1,5 +1,5 @@
 CC = mpicc
-SRC = src/main.c
+SRC = src/*.c
 
 check:
 	${CC} ${SRC} -fsyntax-only -Wall
