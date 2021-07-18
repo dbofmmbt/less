@@ -6,7 +6,7 @@
 
 // Random definition of matrix and vector elements
 void PopulateMatrixAndVector (double *pMatrix, double *pVector, int Size) {
-  srand(time(NULL));
+  srand(1);
 
   for (int i = 0; i < Size; i++) {
     pVector[i] = rand() % 100;
