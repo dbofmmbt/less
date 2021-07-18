@@ -37,11 +37,13 @@ void ProcessInitialization(
 
   MPI_Bcast(Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  int RemaingRows = *Size;
-
-  for (int i = 0; i < ProcRank; i++) RemaingRows = RemaingRows - RemaingRows / (ProcNum - i);
-
-  *RowNum = RemaingRows / (ProcNum - ProcRank);
+  *RowNum = *Size / ProcNum;
+  
+  int RemainingRows = *Size % ProcNum;
+ 
+  if (ProcRank >= ProcNum - RemainingRows) {
+    *RowNum += 1;
+  }
 
   *pProcRows = malloc(sizeof(double) * ((*RowNum) * (*Size)));
   *pProcVector = malloc(sizeof(double) * (*RowNum));
