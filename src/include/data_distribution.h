@@ -11,8 +11,7 @@ void DataDistribution(
   double *pVector,
   double *pProcVector,
 
-  int Size, 
-  int RowNum
+  int Size
 );
 
 #endif

@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
 
   ProcessInitialization(&pMatrix, &pVector, &pResult, &pProcRows, &pProcVector, &pProcResult, &Size, &RowNum);
 
-  DataDistribution(pMatrix, pProcRows, pVector, pProcVector, Size, RowNum);
+  DataDistribution(pMatrix, pProcRows, pVector, pProcVector, Size);
 
   // This is used for vizualization only, uses barriers so it will slow down the program
   PrintDistribution(pMatrix, pVector, pProcRows, pProcVector, Size, RowNum);
