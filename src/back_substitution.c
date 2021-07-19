@@ -7,12 +7,17 @@ void FindBackPivotRow(int RowIndex, int *IterProcRank, int *IterPivotPos)
 {
   for (int i = 0; i < ProcNum - 1; i++)
   {
-    if ((pProcInd[i] <= RowIndex) && (RowIndex < pProcInd[i + 1]))
+    if (RowIndex < pProcInd[i + 1])
+    {
       *IterProcRank = i;
+      break;
+    }
   }
 
   if (RowIndex >= pProcInd[ProcNum - 1])
+  {
     *IterProcRank = ProcNum - 1;
+  }
 
   *IterPivotPos = RowIndex - pProcInd[*IterProcRank];
 }
