@@ -4,7 +4,7 @@
 
 #include "globals.h"
 
-#define MATRIX_SIZE 5;
+#define MATRIX_SIZE 1500;
 
 // Initialize resources
 void ProcessInitialization(
