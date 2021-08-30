@@ -23,12 +23,18 @@ void ParallelEliminateColumns(double *pProcRows, double *pProcVector, double *pP
   }
 }
 
+typedef struct
+{
+  int pivotPos;
+  double maxValue;
+} PivotFinder;
+
+#pragma omp declare reduction(findPivot:PivotFinder \
+                              : omp_out = (omp_in.maxValue > omp_out.maxValue) ? omp_in : omp_out) initializer(omp_priv = {.maxValue = -1})
+
 // Function for the Gausian elimination
 void ParallelGaussianElimination(double *pProcRows, double *pProcVector, int Size, int RowNum)
 {
-  int PivotPos; // Position of the pivot row in the process stripe
-  double MaxValue;
-
   // Structure for the pivot row selection
   struct
   {
@@ -42,19 +48,24 @@ void ParallelGaussianElimination(double *pProcRows, double *pProcVector, int Siz
   // The iterations of the Gaussian elimination stage
   for (int i = 0; i < Size; i++)
   {
-    // Calculating the local pivot row
-    MaxValue = 0;
+    PivotFinder finder = {
+        .maxValue = -1};
 
+#pragma omp parallel for reduction(findPivot \
+                                   : finder)
     for (int j = 0; j < RowNum; j++)
     {
-      if ((pProcPivotIter[j] == -1) && (MaxValue < fabs(pProcRows[j * Size + i])))
+      double currentValue = fabs(pProcRows[j * Size + i]);
+      if ((pProcPivotIter[j] == -1) && (finder.maxValue < currentValue))
       {
-        MaxValue = fabs(pProcRows[j * Size + i]);
-        PivotPos = j;
+        finder.maxValue = currentValue;
+        finder.pivotPos = j;
       }
     }
-    ProcPivot.MaxValue = MaxValue;
+    ProcPivot.MaxValue = finder.maxValue;
     ProcPivot.ProcRank = ProcRank;
+
+    int PivotPos = finder.pivotPos;
 
     // Finding process with MaxValue
     MPI_Allreduce(&ProcPivot, &Pivot, 1, MPI_DOUBLE_INT, MPI_MAXLOC, MPI_COMM_WORLD);
