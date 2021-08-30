@@ -48,6 +48,7 @@ void ParallelBackSubstitution(double *pProcRows, double *pProcVector, double *pP
     MPI_Bcast(&IterResult, 1, MPI_DOUBLE, IterProcRank, MPI_COMM_WORLD);
 
     // Updating the values of the vector b
+    #pragma omp parallel for
     for (int j = 0; j < RowNum; j++)
     {
       if (pProcPivotIter[j] < i)
