@@ -77,6 +77,7 @@ void ParallelGaussianElimination(double *pProcRows, double *pProcVector, int Siz
       pParallelPivotPos[i] = pProcInd[ProcRank] + PivotPos;
 
       // Fill the pivot row
+      #pragma omp parallel for
       for (int j = 0; j < Size; j++)
       {
         pPivotRow[j] = pProcRows[PivotPos * Size + j];
