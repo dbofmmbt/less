@@ -3,17 +3,17 @@
 #include <mpi.h>
 #include <stdlib.h>
 #include <math.h>
+#include <omp.h>
 
 // Subtracts the pivot row from the process rows, which have not been used as the pivot ones yet
 void ParallelEliminateColumns(double *pProcRows, double *pProcVector, double *pPivotRow, int Size, int RowNum, int Iter)
 {
-  double multiplier;
-
+#pragma omp parallel for
   for (int i = 0; i < RowNum; i++)
   {
     if (pProcPivotIter[i] == -1)
     {
-      multiplier = pProcRows[i * Size + Iter] / pPivotRow[Iter];
+      double multiplier = pProcRows[i * Size + Iter] / pPivotRow[Iter];
 
       for (int j = Iter; j < Size; j++)
         pProcRows[i * Size + j] -= pPivotRow[j] * multiplier;

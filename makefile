@@ -1,4 +1,4 @@
-CC = mpicc
+CC = mpicc -fopenmp
 SRC = src/*.c
 
 check:
