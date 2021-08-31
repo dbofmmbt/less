@@ -9,4 +9,4 @@ release:
 	${CC} ${SRC} -Wall -o build/release/main
 
 run: release
-	mpirun -n $(p) ./build/release/main
+	mpirun -n $(p) ./build/release/main $(p)

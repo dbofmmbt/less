@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <omp.h>
 
 #include "include/life_cycle.h"
 #include "include/data_distribution.h"
@@ -32,6 +33,15 @@ void ResultCollection(double *pProcResult, double *pResult, int RowNum) {
 }
 
 int main(int argc, char* argv[]) {
+  if (argc != 2)
+  {
+    fprintf(stderr, "Wrong usage: command <thread_num>\n");
+    exit(1);
+  }
+
+  int threads = atoi(argv[1]);
+  omp_set_num_threads(threads);
+
   double *pMatrix; // Matrix of the linear system
   double *pVector; // Right parts of the linear system
   double *pResult; // Result vector
